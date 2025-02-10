@@ -26,12 +26,18 @@ public interface ResultMenuRepository extends JpaRepository<ResultMenu, Long> {
             + "LIMIT 10 ")
     List<RankMenuRes> findMenuCountsOrderByDesc(@Param("time") LocalDateTime time);
 
-    @Query("SELECT COUNT(rm.restaurant) as resCount, rm.menu as menu, rt.placeName "
+    @Query("SELECT new com.pmm.pickmymenu_back.dto.response.rank.RankRestaurantRes( "
+            + "COUNT(rm.menu) as resCount, rm.menu as menu, rt.placeName as placeName, "
+            + "rt.resId AS resId, rt.placeUrl AS placeUrl, rt.roadAddressName AS roadAddressName"
+            + ", AVG(r.rating) AS startCount ) "
             + "FROM ResultMenu rm "
-            + "RIGHT JOIN rm.restaurant rt "
+            + "JOIN rm.restaurant rt "
+            + "LEFT JOIN rm.review r "
             + "WHERE rm.menu = :menuName "
-            + "GROUP BY rm.restaurant ")
-    List<Map<String, Object>> findMenuByRestaurant(@Param("menuName") String menuName, @Param("time") LocalDateTime time);
+            + "AND (:time IS NULL OR rm.createdDate > :time)"
+            + "GROUP BY rm.restaurant "
+            + "ORDER BY resCount DESC ")
+    List<RankRestaurantRes> findMenuByRestaurant(@Param("menuName") String menuName, @Param("time") LocalDateTime time);
 
 
 
@@ -42,5 +48,11 @@ public interface ResultMenuRepository extends JpaRepository<ResultMenu, Long> {
     @Query("SELECT r.menu FROM ResultMenu r WHERE r.member = :member ORDER BY r.id DESC")
     List<String> findMenuByMember(@Param("member") Member member);
 
+
+    @Query("SELECT COUNT(rm) FROM ResultMenu rm WHERE rm.member.id = :memberId AND rm.isReviewed = '1'")
+    int reviewCountByMemberId(Long memberId);
+
+    @Query("SELECT COUNT(rm) FROM ResultMenu rm WHERE rm.member.id = :memberId AND rm.restaurant IS NOT NULL")
+    int restaurantCountByMemberId(@Param("memberId") Long memberId);
 
 }

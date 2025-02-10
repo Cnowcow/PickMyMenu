@@ -1,5 +1,6 @@
 package com.pmm.pickmymenu_back.domain;
 
+import com.pmm.pickmymenu_back.dto.request.member.MemberAdminUpdateReq;
 import com.pmm.pickmymenu_back.dto.request.member.MemberJoinReq;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,9 @@ public class Member extends TimeEntity {
     @Column(nullable = false)
     private String gender;
 
+    @Column(nullable = false)
+    private String role;
+
     // ResultMenu와의 일대다 관계 설정
     @OneToMany(mappedBy = "member")
     private List<ResultMenu> resultMenuList = new ArrayList<>();
@@ -47,13 +51,14 @@ public class Member extends TimeEntity {
     private List<SurveyGroup> surveyGroupList = new ArrayList<>();
 
     private Member(String name, String password, String email,
-            String birthdate, String phoneNumber, String gender) {
+            String birthdate, String phoneNumber, String gender, String role) {
         this.name = name;
         this.password = password;
         this.email = email;
         this.birthdate = birthdate;
         this.phoneNumber = phoneNumber;
         this.gender = gender;
+        this.role = role;
     }
 
     public static Member create(MemberJoinReq member) {
@@ -63,7 +68,8 @@ public class Member extends TimeEntity {
                 member.getEmail(),
                 member.getBirthdate(),
                 member.getPhoneNumber(),
-                member.getGender()
+                member.getGender(),
+                member.getRole()
         );
     }
 
@@ -76,5 +82,13 @@ public class Member extends TimeEntity {
         if (password != null && !password.isEmpty()) {
             this.password = password;
         }
+    }
+
+    public void update(MemberAdminUpdateReq req) {
+        this.birthdate = req.getBirthdate();
+        this.gender = req.getGender();
+        this.name = req.getName();
+        this.phoneNumber = req.getPhoneNumber();
+
     }
 }

@@ -18,7 +18,7 @@ load_dotenv()
 
 api_key = os.getenv("API_KEY")
 
-model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 genai.configure(api_key=api_key)
 
 app = FastAPI()
@@ -207,8 +207,9 @@ async def process_image(
         response = model.generate_content(["image : ",img, "data : ",response_content,
                                            "1. 이미지에 있는 키워드를 추출한다. "
                                            "2. 제공된 데이터에 이미지에서 추출한 키워드가 하나라도 포함되어있는지 판단한다. (ex 상호명, 주소)"
-                                           "3. 왜 그렇게 판단했는지 간단하게 이유를 설명한다."
-                                           "4. 포함되었다면 yes, 포함되지 않았다면 no라고 대답한다. 나머지에 대한 답변은 한글로 한다."])
+                                           "3. 포함되었다면 yes, 포함되지 않았다면 no라고 대답한다. "
+                                           "4. 왜 그렇게 판단했는지 간단하게 이유를 설명한다."
+                                           "5. 이유 대한 답변은 한글로 한다."])
 
         result = response.text
         print(result)

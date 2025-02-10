@@ -1,17 +1,24 @@
 package com.pmm.pickmymenu_back.service;
 
 import com.pmm.pickmymenu_back.domain.Member;
+import com.pmm.pickmymenu_back.domain.SurveyGroup;
+import com.pmm.pickmymenu_back.dto.request.member.MemberAdminUpdateReq;
 import com.pmm.pickmymenu_back.dto.request.member.MemberJoinReq;
 import com.pmm.pickmymenu_back.dto.request.member.MemberLoginReq;
+import com.pmm.pickmymenu_back.dto.request.member.MemberRecordReq;
 import com.pmm.pickmymenu_back.dto.request.member.MemberUpdateReq;
 import com.pmm.pickmymenu_back.dto.response.member.MemberEmailCheckRes;
 import com.pmm.pickmymenu_back.dto.response.member.MemberLoginRes;
 import com.pmm.pickmymenu_back.dto.response.member.MemberMyPageRes;
 import com.pmm.pickmymenu_back.dto.response.member.MemberPhoneCheckRes;
+import com.pmm.pickmymenu_back.dto.response.member.MemberRecordRes;
+import com.pmm.pickmymenu_back.dto.response.member.MemberRecordRes.RecordSurveyGroupRes;
 import com.pmm.pickmymenu_back.exception.MemberException;
 import com.pmm.pickmymenu_back.repository.MemberRepository;
+import com.pmm.pickmymenu_back.repository.SurveyGroupRepository;
 import com.pmm.pickmymenu_back.util.JWTUtil;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,6 +33,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JWTUtil jwtUtil;
+    private final SurveyGroupRepository surveyGroupRepository;
 
     // 회원가입 로직
     public String joinProcess(MemberJoinReq req) {
@@ -37,6 +45,11 @@ public class MemberService {
         if (isPhoneNumberExist) throw new IllegalArgumentException("이미 등록된 전화번호입니다.");
 
         req.setPassword(bCryptPasswordEncoder.encode(req.getPassword()));
+
+        if (req.getRole() == null || req.getRole().isBlank()) {
+            req.setRole("ROLE_USER");
+        }
+
         Member member = Member.create(req);
         memberRepository.save(member);
         return "회원가입 성공";
@@ -52,10 +65,10 @@ public class MemberService {
             throw new IllegalArgumentException("잘못된 비밀번호입니다.");
         }
 
-        String token = jwtUtil.generateToken(member.getEmail(), member.getName());
+        String token = jwtUtil.generateToken(member.getEmail(), member.getName(), member.getRole());
         res.addHeader("Set-Cookie", String.format("token=%s; HttpOnly; Path=/", token));
         System.out.println("token : " + token);
-        return new MemberLoginRes(token, member.getName());
+        return new MemberLoginRes(token, member.getName(), member.getRole());
     }
 
     // 마이페이지 조회
@@ -143,4 +156,34 @@ public class MemberService {
         memberRepository.delete(member);
     }
 
+    public MemberRecordRes memberSurveyRecord(MemberRecordReq req, String token) {
+        String email = jwtUtil.validateAndExtract(token);
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new MemberException("해당 이메일이 존재하지 않습니다."));
+        List<SurveyGroup> groupByMemberAndGetMenu = surveyGroupRepository.findGroupByMemberAndGetMenu(
+                member);
+        List<RecordSurveyGroupRes> list = groupByMemberAndGetMenu.stream()
+                .map(RecordSurveyGroupRes::new).toList();
+
+        return new MemberRecordRes(list);
+    }
+
+    public String adminUpdate(Long id, MemberAdminUpdateReq req, String token) {
+        adminCheck(token);
+
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new MemberException("해당 ID 가 존재하지 않습니다."));
+        member.update(req);
+        memberRepository.save(member);
+        return "변경 성공.";
+    }
+
+    public void adminCheck(String token) {
+        String email = jwtUtil.validateAndExtract(token);
+        Member admin = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new MemberException("관리자가 아닙니다."));
+        if (!admin.getRole().equals("ROLE_ADMIN")) {
+            throw new MemberException("관리자가 아닙니다.");
+        }
+    }
 }
